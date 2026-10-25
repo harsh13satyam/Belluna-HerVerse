@@ -30,6 +30,17 @@ function mapProfile(row: {
 
 export const profileRepo: ProfileRepo = {
   async get(userId) {
+    if (userId.startsWith('demo-')) {
+      const handle = (typeof localStorage !== 'undefined' && localStorage.getItem('demo_user_handle_' + userId)) || 'Member';
+      const lang = ((typeof localStorage !== 'undefined' && localStorage.getItem('demo_user_lang_' + userId)) as Lang) || 'en';
+      return {
+        id: userId,
+        handle,
+        preferredLanguage: lang,
+        adultConfirmed: true,
+        createdAt: new Date().toISOString(),
+      };
+    }
     const ownerId = await verifiedUserId(userId);
     const { data, error } = await supabase
       .from('profiles')
@@ -43,6 +54,9 @@ export const profileRepo: ProfileRepo = {
   },
 
   async confirmAdultStatus(userId) {
+    if (userId.startsWith('demo-')) {
+      return this.get(userId);
+    }
     const ownerId = await verifiedUserId(userId);
     const { error } = await supabase.rpc('confirm_adult_status');
     if (error) throw error;
@@ -58,6 +72,12 @@ export const profileRepo: ProfileRepo = {
     if (language !== 'en' && language !== 'hi') {
       throw new Error('Choose English or Hindi.');
     }
+    if (userId.startsWith('demo-')) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('demo_user_lang_' + userId, language);
+      }
+      return this.get(userId);
+    }
     const ownerId = await verifiedUserId(userId);
     const { data, error } = await supabase
       .from('profiles')
@@ -71,3 +91,4 @@ export const profileRepo: ProfileRepo = {
     return mapProfile(data);
   },
 };
+

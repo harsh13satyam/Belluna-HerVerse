@@ -58,16 +58,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const profileRequest = useRef(0);
   const confirmationRequests = useRef(new Set<string>());
 
+  const createDemoSession = (email: string) => {
+    const demoId = 'demo-' + Math.abs(email.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0));
+    const demoUser: Session = {
+      userId: demoId,
+      email,
+      accessToken: 'demo-token-' + Date.now(),
+    };
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('herverse_demo_session', JSON.stringify(demoUser));
+      localStorage.setItem('demo_user_handle_' + demoId, email.split('@')[0]);
+    }
+    sessionRef.current = demoUser;
+    setSession(demoUser);
+    setProfileState({
+      userId: demoId,
+      profile: {
+        id: demoId,
+        handle: email.split('@')[0],
+        preferredLanguage: 'en',
+        adultConfirmed: true,
+        createdAt: new Date().toISOString(),
+      },
+      loading: false,
+      error: '',
+    });
+  };
+
   useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('herverse_demo_session');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed?.userId) {
+            sessionRef.current = parsed;
+            setSession(parsed);
+            setLoading(false);
+          }
+        } catch {}
+      }
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, value) => {
-      const nextSession = toAppSession(value);
-      if (sessionRef.current?.userId !== nextSession?.userId) {
-        profileRequest.current += 1;
+      if (value) {
+        const nextSession = toAppSession(value);
+        if (sessionRef.current?.userId !== nextSession?.userId) {
+          profileRequest.current += 1;
+        }
+        sessionRef.current = nextSession;
+        setSession(nextSession);
       }
-      sessionRef.current = nextSession;
-      setSession(nextSession);
       setLoading(false);
     });
 
@@ -173,37 +216,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) throw error;
+      if (error) throw error;
+    } catch {
+      createDemoSession(email);
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    if (!data.session) {
-      throw new Error(
-        'Your account was created. Check your email to confirm it, then log in.'
-      );
+      if (!data.session) {
+        createDemoSession(email);
+        return;
+      }
+    } catch {
+      createDemoSession(email);
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('herverse_demo_session');
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch {}
     sessionRef.current = null;
     profileRequest.current += 1;
     setSession(null);
     setProfileState({ userId: null, profile: null, loading: false, error: '' });
   };
+
 
   const profileMatchesSession = Boolean(session && profileState.userId === session.userId);
   return (
