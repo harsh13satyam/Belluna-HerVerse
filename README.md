@@ -1,8 +1,10 @@
 # Belluna — Women's Health Companion (working title)
 
+> 🚀 **Live Demo:** [https://belluna-herverse.onrender.com](https://belluna-herverse.onrender.com)
+
 > A privacy-first, Hindi/English web app that helps women **understand** their health, **track** their cycle and symptoms, and **act** when something is wrong — built for recHERsion 2026, Problem Statement 1: Women's Healthcare.
 
-**Status:** pre-development · **Stack:** React + Vite + TypeScript · Supabase · Groq · versel Pages
+**Status:** deployed · **Stack:** React + Vite + TypeScript · Supabase · Groq · Render
 
 > **Medical disclaimer:** Belluna provides general health education and personal tracking. It does **not** diagnose, prescribe, or replace a doctor. In an emergency call **112** or go to the nearest hospital.
 
